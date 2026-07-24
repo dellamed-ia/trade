@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trade Dellamed">
+<title>Trade Intelligence · Dellamed</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --bg:#000000; --card:#0D1117; --card2:#161B26; --bd:#1E2A3A;
+  --tx:#FFFFFF; --tx2:#B8C4D9; --tx3:#8494AD;
+  --cy:#00E5FF; --mg:#D946EF; --gr:#00FF88; --rd:#FF4D6A;
+  --am:#FFBB00; --or:#FF6B35; --pu:#8B5CF6; --gold:#D4A843;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font-family:inherit;transition:filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+input,select,textarea{font-family:inherit;width:100%;padding:11px 14px;border-radius:8px;
+  border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-size:14px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--cy);box-shadow:0 0 0 2px rgba(0,229,255,.15)}
+select option{background:var(--card2);color:var(--tx)}
+::placeholder{color:var(--tx3)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+.lbl{display:block;font-size:11px;font-weight:600;color:var(--tx2);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px}
+.btn{padding:11px 30px;border-radius:8px;border:none;cursor:pointer;
+  font-size:13px;font-weight:700;letter-spacing:.04em;
+  background:linear-gradient(135deg,#00E5FF,#00B4D8);color:#000}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.nav{padding:8px 16px;border-radius:6px;border:1px solid var(--bd);
+  background:transparent;color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em}
+.nav.on{border-color:var(--cy);background:rgba(0,229,255,.10);color:var(--cy)}
+.nav.on.am{border-color:var(--am);background:rgba(255,187,0,.10);color:var(--am)}
+.nav.on.mg{border-color:var(--mg);background:rgba(217,70,239,.10);color:var(--mg)}
+.pill{padding:3px 10px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.08em}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.hide{display:none!important}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.blink{animation:bk .8s infinite}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.25}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:460px">
+
+    <div style="border-radius:12px;overflow:hidden;border:1px solid #2A4370;margin-bottom:14px">
+      <svg viewBox="0 0 680 250" width="100%" style="display:block">
+        <defs><clipPath id="cb"><rect width="680" height="250" rx="12"/></clipPath></defs>
+        <g clip-path="url(#cb)">
+          <rect width="680" height="250" fill="#16305E"/>
+          <g id="rays"></g>
+          <ellipse cx="340" cy="180" rx="210" ry="120" fill="#D4A843" opacity=".2"/>
+          <ellipse cx="340" cy="222" rx="150" ry="16" fill="#C75A22" opacity=".9"/>
+          <circle cx="340" cy="214" r="19" fill="#E2703A"/>
+          <rect x="330" y="205" width="20" height="4" rx="2" fill="#0A1224"/>
+          <g id="heroes"></g>
+        </g>
+      </svg>
+    </div>
+
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="color:#FFF;font-size:22px;font-weight:900;letter-spacing:-.01em">TRADE MARKETING</div>
+      <div style="color:var(--tx3);font-size:10px;font-weight:600;letter-spacing:.22em;margin-top:6px">DELLAMED · INTELLIGENCE</div>
+    </div>
+
+    <div class="card" style="padding:26px 24px">
+      <label class="lbl">E-mail</label>
+      <input id="li-email" type="email" placeholder="nome@dellamed.com.br" autocomplete="username" style="margin-bottom:14px">
+      <label class="lbl">Senha</label>
+      <input id="li-senha" type="password" placeholder="Sua senha" autocomplete="current-password" style="margin-bottom:16px">
+      <div id="li-erro" style="display:none;margin-bottom:12px;padding:9px 12px;border-radius:6px;
+        background:rgba(255,77,106,.12);border:1px solid rgba(255,77,106,.3);font-size:12px;color:var(--rd)"></div>
+      <button id="li-btn" class="btn" style="width:100%">ENTRAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hide">
+  <header style="background:linear-gradient(135deg,#0A1628,#152238 40%,#1B2A4A);
+    padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:10px;border-bottom:1px solid #2A4370">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy)"></span>
+      <span style="font-size:16px;font-weight:800;letter-spacing:-.02em">TRADE INTELLIGENCE</span>
+      <span style="color:var(--tx3);font-size:10px;letter-spacing:.1em">DELLAMED</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button class="nav on" id="nv-novo">+ NOVO RELATO</button>
+      <button class="nav" id="nv-hist">HISTORICO</button>
+      <button class="nav" id="nv-rel">RELATORIO</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:6px;padding-left:10px;border-left:1px solid #2A4370">
+        <div style="text-align:right;line-height:1.3">
+          <div id="hd-nome" style="font-size:11px;font-weight:700"></div>
+          <div id="hd-role" style="font-size:9px;letter-spacing:.06em;font-weight:600"></div>
+        </div>
+        <button class="nav" id="nv-sair" style="font-size:10px;padding:6px 10px">SAIR</button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width:980px;margin:0 auto;padding:22px 16px">
+
+    <!-- NOVO RELATO -->
+    <section id="vw-novo">
+      <div class="card" style="padding:24px">
+        <h2 style="margin:0 0 20px;font-size:15px;font-weight:700;letter-spacing:.04em">REGISTRAR VISITA</h2>
+        <div class="grid3" style="margin-bottom:14px">
+          <div>
+            <label class="lbl">Vendedor</label>
+            <div id="fm-vend" style="padding:11px 14px;border-radius:8px;border:1px solid var(--bd);
+              background:var(--bg);color:var(--tx2);font-size:14px"></div>
+          </div>
+          <div>
+            <label class="lbl">Estado</label>
+            <select id="fm-uf"><option value="">Selecione...</option></select>
+          </div>
+          <div>
+            <label class="lbl">Data da visita</label>
+            <input id="fm-data" type="text" placeholder="dd/mm/aaaa" maxlength="10" inputmode="numeric">
+          </div>
+        </div>
+        <label class="lbl">Relato da visita</label>
+        <textarea id="fm-texto" rows="5" style="resize:vertical;line-height:1.6"
+          placeholder="Escreva livremente: qual loja visitou, como estavam os produtos Dellamed, concorrentes, oportunidades, problemas..."></textarea>
+        <button id="fm-enviar" class="btn" style="margin-top:14px">ENVIAR</button>
+      </div>
+      <div id="pendentes" style="margin-top:22px"></div>
+    </section>
+
+    <!-- HISTORICO -->
+    <section id="vw-hist" class="hide">
+      <div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <span style="color:var(--tx3)">/</span>
+        <input id="hs-busca" type="text" placeholder="Buscar por palavra, data, vendedor, loja..."
+          style="border:none;background:transparent;padding:8px 0">
+        <span id="hs-count" class="mono" style="font-size:11px;color:var(--tx3);white-space:nowrap"></span>
+      </div>
+      <div id="hs-lista"></div>
+    </section>
+
+    <!-- RELATORIO -->
+    <section id="vw-rel" class="hide">
+      <div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;
+        flex-wrap:wrap;align-items:flex-end">
+        <div><label class="lbl" style="font-size:10px">De</label><input id="ft-de" type="date" style="padding:7px 10px;font-size:13px"></div>
+        <div><label class="lbl" style="font-size:10px">Ate</label><input id="ft-ate" type="date" style="padding:7px 10px;font-size:13px"></div>
+        <div><label class="lbl" style="font-size:10px">Vendedor</label><select id="ft-vend" style="padding:7px 10px;font-size:13px"></select></div>
+        <div><label class="lbl" style="font-size:10px">Estado</label><select id="ft-uf" style="padding:7px 10px;font-size:13px"></select></div>
+        <div><label class="lbl" style="font-size:10px">Sentimento</label><select id="ft-sent" style="padding:7px 10px;font-size:13px">
+          <option value="">Todos</option><option value="positivo">Positivo</option>
+          <option value="neutro">Neutro</option><option value="negativo">Negativo</option></select></div>
+        <button class="nav" id="ft-limpar">LIMPAR</button>
+        <button class="nav" id="ft-excel" style="margin-left:auto;border-color:rgba(0,255,136,.5);
+          background:rgba(0,255,136,.1);color:var(--gr)">EXPORTAR EXCEL</button>
+      </div>
+      <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px"></div>
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">SENTIMENTO</h4><canvas id="ch1" height="180"></canvas></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">VISITAS POR VENDEDOR</h4><canvas id="ch2" height="180"></canvas></div>
+      </div>
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">OPORTUNIDADES VS PERDAS</h4><canvas id="ch3" height="180"></canvas></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">CONCORRENTES CITADOS</h4><canvas id="ch4" height="180"></canvas></div>
+      </div>
+      <div class="grid2" style="margin-bottom:22px">
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">TOP OPORTUNIDADES</h4><div id="rk-op"></div></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">TOP PERDAS</h4><div id="rk-pe"></div></div>
+      </div>
+      <h3 id="rel-titulo" style="font-size:11px;color:var(--tx3);letter-spacing:.08em;margin-bottom:12px"></h3>
+      <div id="rel-lista"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- OVERLAYS -->
+<div id="ov-load" class="ovl hide">
+  <div class="card" style="padding:26px 34px;text-align:center">
+    <div class="blink" style="width:10px;height:10px;border-radius:50%;background:var(--cy);
+      box-shadow:0 0 14px var(--cy);margin:0 auto 14px"></div>
+    <div id="ov-load-txt" class="mono" style="font-size:13px;color:var(--cy)">carregando...</div>
+  </div>
+</div>
+
+<div id="ov-ok" class="ovl hide">
+  <div class="card" style="padding:32px 28px;text-align:center;max-width:360px;width:100%;border-color:rgba(0,255,136,.4)">
+    <div style="width:12px;height:12px;border-radius:50%;background:var(--gr);
+      box-shadow:0 0 16px var(--gr);margin:0 auto 18px"></div>
+    <h3 style="font-size:15px;font-weight:700;margin:0 0 24px;letter-spacing:.06em">ENVIADO COM SUCESSO</h3>
+    <button class="btn" style="padding:11px 50px" onclick="fechaOk()">OK</button>
+  </div>
+</div>
+
+<div id="ov-del" class="ovl hide">
+  <div class="card" style="padding:26px;max-width:420px;width:100%;border-color:rgba(255,77,106,.4)">
+    <h3 style="margin:0 0 10px;font-size:14px;font-weight:700;letter-spacing:.04em">EXCLUIR RELATO?</h3>
+    <p style="font-size:13px;color:var(--tx2);margin:0 0 12px">Esta acao nao pode ser desfeita.</p>
+    <div id="del-info" style="padding:10px 14px;border-radius:8px;background:var(--card2);
+      border:1px solid var(--bd);margin-bottom:20px;font-size:12px;color:var(--tx2)"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="nav" onclick="fechaDel()">CANCELAR</button>
+      <button id="del-sim" style="padding:9px 26px;border-radius:8px;border:none;background:var(--rd);
+        color:#fff;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.05em">SIM, EXCLUIR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACAO
+   Se voce criar uma nova implantacao no Apps Script,
+   troque a URL abaixo pela nova.
+   ============================================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbynEN2lu73JWVFUjjPLFErqp61jljknKLKTjWiOM72KFZeARv3KY5PUJVyZ3ebkO4FZNw/exec";
+
+const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
+const SC = {positivo:"#00FF88", neutro:"#00E5FF", negativo:"#FF4D6A"};
+
+let USER = null, CRED = null, RELATOS = [], ABERTOS = new Set(), DEL_ID = null;
+let charts = {};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- API ---------- */
+// Content-Type text/plain evita o preflight CORS que o Apps Script nao responde
+async function api(acao, extra){
+  const body = Object.assign({acao}, CRED || {}, extra || {});
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body)
+  });
+  return await res.json();
+}
+
+function load(txt){ $("ov-load-txt").textContent = txt || "carregando..."; $("ov-load").classList.remove("hide"); }
+function unload(){ $("ov-load").classList.add("hide"); }
+function fechaOk(){ $("ov-ok").classList.add("hide"); }
+function fechaDel(){ $("ov-del").classList.add("hide"); DEL_ID = null; }
+
+/* ---------- LOGIN ---------- */
+$("li-btn").onclick = entrar;
+$("li-senha").onkeydown = e => { if(e.key === "Enter") entrar(); };
+$("li-email").onkeydown = e => { if(e.key === "Enter") $("li-senha").focus(); };
+
+async function entrar(){
+  const email = $("li-email").value.trim(), senha = $("li-senha").value;
+  if(!email || !senha) return;
+  $("li-erro").style.display = "none";
+  load("entrando...");
+  try{
+    const r = await fetch(API_URL, {
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({acao:"login", email, senha})
+    }).then(x => x.json());
+    unload();
+    if(!r.ok){ erroLogin(r.erro || "Falha no login."); return; }
+    CRED = {email, senha};
+    USER = r.usuario;
+    localStorage.setItem("trade_cred", JSON.stringify(CRED));
+    iniciar();
+  }catch(e){ unload(); erroLogin("Sem conexao com o servidor."); }
+}
+
+function erroLogin(msg){ $("li-erro").textContent = msg; $("li-erro").style.display = "block"; }
+
+$("nv-sair").onclick = () => {
+  localStorage.removeItem("trade_cred");
+  CRED = null; USER = null; RELATOS = [];
+  $("app").classList.add("hide"); $("login").classList.remove("hide");
+  $("li-senha").value = "";
+};
+
+/* ---------- INICIALIZACAO ---------- */
+async function iniciar(){
+  $("login").classList.add("hide");
+  $("app").classList.remove("hide");
+  $("hd-nome").textContent = USER.nome;
+  const adm = USER.role === "admin";
+  $("hd-role").textContent = adm ? "ADMINISTRADORA" : "VENDEDOR";
+  $("hd-role").style.color = adm ? "var(--am)" : "var(--tx3)";
+  $("fm-vend").textContent = USER.nome;
+  $("ft-excel").classList.toggle("hide", !adm);
+  await recarregar();
+}
+
+async function recarregar(){
+  load("buscando relatos...");
+  try{
+    const r = await api("listar");
+    RELATOS = r.ok ? r.relatos : [];
+  }catch(e){ RELATOS = []; }
+  unload();
+  renderPendentes(); renderHist(); renderRel();
+}
+
+/* ---------- NAVEGACAO ---------- */
+function irPara(v){
+  ["novo","hist","rel"].forEach(k => {
+    $("vw-"+k).classList.toggle("hide", k !== v);
+    $("nv-"+k).className = "nav" + (k === v ? " on" + (k === "hist" ? " am" : k === "rel" ? " mg" : "") : "");
+  });
+}
+$("nv-novo").onclick = () => irPara("novo");
+$("nv-hist").onclick = () => irPara("hist");
+$("nv-rel").onclick  = async () => { irPara("rel"); await recarregar(); irPara("rel"); };
+
+/* ---------- FORMULARIO ---------- */
+UFS.forEach(u => $("fm-uf").insertAdjacentHTML("beforeend", `<option value="${u}">${u}</option>`));
+
+$("fm-data").oninput = e => {
+  const d = e.target.value.replace(/\D/g,"").slice(0,8);
+  e.target.value = d.length <= 2 ? d
+    : d.length <= 4 ? d.slice(0,2)+"/"+d.slice(2)
+    : d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4);
+};
+
+$("fm-enviar").onclick = async () => {
+  const uf = $("fm-uf").value, dt = $("fm-data").value, tx = $("fm-texto").value.trim();
+  if(!uf || dt.length < 10 || !tx){ alert("Preencha estado, data completa e o relato."); return; }
+  load("enviando e analisando...");
+  try{
+    const r = await api("criar", {estado:uf, dataVisita:dt, texto:tx});
+    unload();
+    if(!r.ok){ alert(r.erro || "Falha ao enviar."); return; }
+    $("fm-texto").value = "";
+    $("ov-ok").classList.remove("hide");
+    await recarregar();
+  }catch(e){ unload(); alert("Sem conexao. O relato nao foi enviado, tente de novo."); }
+};
+
+/* ---------- PENDENTES ---------- */
+function renderPendentes(){
+  const p = RELATOS.filter(r => !r.analisado);
+  if(!p.length){ $("pendentes").innerHTML = ""; return; }
+  $("pendentes").innerHTML =
+    `<h3 style="font-size:11px;font-weight:700;color:var(--am);letter-spacing:.08em;margin-bottom:12px">ENVIOS PENDENTES</h3>` +
+    p.map(r => `
+      <div class="card" style="padding:10px 14px;border-left:3px solid var(--am);margin-bottom:6px;
+        display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div class="mono" style="font-size:11px;color:var(--tx3)">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:3px">${esc(r.textoOriginal.slice(0,80))}${r.textoOriginal.length>80?"...":""}</div>
+        </div>
+        <button class="nav" style="border-color:rgba(255,187,0,.5);background:rgba(255,187,0,.12);
+          color:var(--am);font-size:10px;padding:5px 12px" onclick="reanalisar('${r.id}')">ATUALIZAR</button>
+      </div>`).join("");
+}
+
+async function reanalisar(id){
+  load("analisando...");
+  try{ const r = await api("analisar", {id}); unload(); if(!r.ok) alert(r.erro); await recarregar(); }
+  catch(e){ unload(); alert("Sem conexao."); }
+}
+
+/* ---------- HISTORICO ---------- */
+$("hs-busca").oninput = renderHist;
+
+function renderHist(){
+  const q = $("hs-busca").value.toLowerCase().trim();
+  const lista = !q ? RELATOS : RELATOS.filter(r => (
+    [r.vendedor,r.estado,r.loja,r.cidade,r.resumo,r.acaoSugerida,r.textoOriginal,dtBR(r.data)]
+      .concat(r.oportunidades,r.perdas,r.insights,r.produtos,r.concorrentes)
+      .join(" ").toLowerCase().includes(q)
+  ));
+  $("hs-count").textContent = lista.length + (lista.length === 1 ? " resultado" : " resultados");
+  if(!lista.length){
+    $("hs-lista").innerHTML = `<div class="mono" style="text-align:center;padding:50px;color:var(--tx3);font-size:13px">// nenhum registro</div>`;
+    return;
+  }
+  const podeExcluir = r => USER.role === "admin" || r.owner === CRED.email.toLowerCase();
+  $("hs-lista").innerHTML = lista.map(r => {
+    const c = r.analisado ? SC[r.sentimento] || SC.neutro : "#8494AD";
+    return `<div class="card" style="padding:14px 16px;border-left:3px solid ${c};margin-bottom:8px;
+      display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="mono" style="font-size:11px;color:var(--tx3)">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</span>
+          ${r.analisado
+            ? `<span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${r.sentimento.toUpperCase()}</span>`
+            : `<span class="pill" style="background:#8494AD22;color:var(--tx3)">PENDENTE</span>`}
+        </div>
+        ${r.loja ? `<div style="font-size:14px;font-weight:700;margin-top:4px">${esc(r.loja)}</div>` : ""}
+        <div style="font-size:13px;color:var(--tx2);margin-top:4px;line-height:1.5">${esc(r.resumo || r.textoOriginal.slice(0,120))}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+          ${r.oportunidades.map(o=>`<span style="padding:2px 7px;border-radius:4px;font-size:10px;background:rgba(0,255,136,.12);color:var(--gr)">+ ${esc(o)}</span>`).join("")}
+          ${r.perdas.map(p=>`<span style="padding:2px 7px;border-radius:4px;font-size:10px;background:rgba(255,77,106,.12);color:var(--rd)">! ${esc(p)}</span>`).join("")}
+        </div>
+      </div>
+      ${podeExcluir(r) ? `<button class="nav" style="font-size:10px;padding:4px 10px;flex-shrink:0"
+        onclick="pedirExcluir('${r.id}')">EXCLUIR</button>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function pedirExcluir(id){
+  const r = RELATOS.find(x => x.id === id); if(!r) return;
+  DEL_ID = id;
+  $("del-info").innerHTML = `<div class="mono" style="font-size:11px;color:var(--tx3);margin-bottom:4px">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</div>${esc(r.textoOriginal.slice(0,100))}`;
+  $("ov-del").classList.remove("hide");
+}
+
+$("del-sim").onclick = async () => {
+  if(!DEL_ID) return;
+  const id = DEL_ID; fechaDel(); load("excluindo...");
+  try{ const r = await api("excluir", {id}); unload(); if(!r.ok) alert(r.erro); await recarregar(); }
+  catch(e){ unload(); alert("Sem conexao."); }
+};
+
+/* ---------- RELATORIO ---------- */
+["ft-de","ft-ate","ft-vend","ft-uf","ft-sent"].forEach(id => $(id).onchange = renderRel);
+$("ft-limpar").onclick = () => {
+  ["ft-de","ft-ate","ft-vend","ft-uf","ft-sent"].forEach(id => $(id).value = "");
+  renderRel();
+};
+
+function filtrados(){
+  const de = $("ft-de").value, ate = $("ft-ate").value;
+  const v = $("ft-vend").value, u = $("ft-uf").value, s = $("ft-sent").value;
+  return RELATOS.filter(r => {
+    if(!r.analisado) return false;
+    if(v && r.vendedor !== v) return false;
+    if(u && r.estado !== u) return false;
+    if(s && r.sentimento !== s) return false;
+    const d = new Date(r.data);
+    if(de && d < new Date(de)) return false;
+    if(ate){ const t = new Date(ate); t.setHours(23,59,59); if(d > t) return false; }
+    return true;
+  });
+}
+
+function renderRel(){
+  // opcoes dos filtros
+  ["ft-vend","ft-uf"].forEach((id,i) => {
+    const campo = i === 0 ? "vendedor" : "estado", atual = $(id).value;
+    const vals = [...new Set(RELATOS.map(r => r[campo]).filter(Boolean))].sort();
+    $(id).innerHTML = `<option value="">Todos</option>` + vals.map(v=>`<option value="${v}">${v}</option>`).join("");
+    $(id).value = atual;
+  });
+
+  const F = filtrados();
+  const cont = (arr,campo) => arr.reduce((s,r)=>s+(r[campo]?r[campo].length:0),0);
+  const kpi = [
+    ["Visitas", F.length, "var(--cy)"],
+    ["Lojas", new Set(F.map(r=>r.loja).filter(Boolean)).size, "var(--pu)"],
+    ["Estados", new Set(F.map(r=>r.estado)).size, "var(--mg)"],
+    ["Oportunidades", cont(F,"oportunidades"), "var(--gr)"],
+    ["Perdas", cont(F,"perdas"), "var(--rd)"]
+  ];
+  $("kpis").innerHTML = kpi.map(([l,v,c]) => `
+    <div class="card" style="padding:14px 16px;border-top:2px solid ${c}">
+      <div style="font-size:26px;font-weight:800;color:${c};line-height:1">${v}</div>
+      <div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.06em;margin-top:6px">${l.toUpperCase()}</div>
+    </div>`).join("");
+
+  desenharGraficos(F);
+
+  const rank = (campo) => {
+    const m = {}; F.forEach(r => (r[campo]||[]).forEach(x => m[x] = (m[x]||0)+1));
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  };
+  const pintaRank = (el,itens,cor,ic) => {
+    $(el).innerHTML = itens.length ? itens.map(([t,n]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bd)">
+        <span style="font-size:13px">${ic} ${esc(t)}</span>
+        <span style="font-size:11px;font-weight:700;color:${cor};background:${cor}20;padding:2px 9px;border-radius:4px">${n}x</span>
+      </div>`).join("") : `<div style="font-size:13px;color:var(--tx3)">Nenhum dado</div>`;
+  };
+  pintaRank("rk-op", rank("oportunidades"), "#00FF88", "+");
+  pintaRank("rk-pe", rank("perdas"), "#FF4D6A", "!");
+
+  $("rel-titulo").textContent = "RELATOS // " + F.length;
+  $("rel-lista").innerHTML = F.map(r => {
+    const c = SC[r.sentimento] || SC.neutro, ab = ABERTOS.has(r.id);
+    return `<div class="card" style="padding:${ab?"18px 20px":"14px 16px"};border-left:3px solid ${c};margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="min-width:0">
+          <div class="mono" style="font-size:11px;color:var(--tx3)">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}${r.cidade?" // "+esc(r.cidade):""}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:3px">${esc(r.loja) || "—"}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+          <span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${r.sentimento.toUpperCase()}</span>
+          <button class="nav" style="padding:5px 9px;font-size:10px" onclick="alterna('${r.id}')">${ab?"▲":"▼"}</button>
+        </div>
+      </div>
+      ${ab ? corpoRelato(r) : ""}
+    </div>`;
+  }).join("");
+}
+
+function corpoRelato(r){
+  const bloco = (t,itens,cor,ic) => !itens.length ? "" :
+    `<div><div style="font-size:10px;font-weight:700;color:${cor};letter-spacing:.06em;margin-bottom:5px">${ic} ${t}</div>
+     ${itens.map(i=>`<div style="font-size:13px;padding-left:10px;margin-bottom:4px;border-left:2px solid ${cor}55;line-height:1.4">${esc(i)}</div>`).join("")}</div>`;
+  return `
+    <p style="font-size:14px;color:var(--tx2);line-height:1.6;margin:10px 0 14px;font-style:italic">${esc(r.resumo)}</p>
+    <div class="grid2" style="margin-bottom:12px">
+      ${bloco("OPORTUNIDADES", r.oportunidades, "#00FF88", "+")}
+      ${bloco("PERDAS / PROBLEMAS", r.perdas, "#FF4D6A", "!")}
+      ${bloco("INSIGHTS", r.insights, "#00E5FF", "*")}
+      ${bloco("PRODUTOS / MIX", r.produtos, "#8B5CF6", "#")}
+    </div>
+    ${r.concorrentes.length ? `<div style="margin-bottom:12px;padding:8px 12px;border-radius:6px;
+      background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.25);font-size:13px;color:var(--tx2)">
+      <b style="color:var(--or);font-size:10px;letter-spacing:.06em">CONCORRENTES</b> ${r.concorrentes.map(esc).join("  /  ")}</div>` : ""}
+    ${r.acaoSugerida ? `<div style="padding:12px 14px;border-radius:8px;background:rgba(255,187,0,.08);
+      border:1px solid rgba(255,187,0,.3)"><span style="font-size:10px;font-weight:700;color:var(--am);letter-spacing:.06em">ACAO SUGERIDA</span>
+      <p style="margin:6px 0 0;font-size:14px;line-height:1.5">${esc(r.acaoSugerida)}</p></div>` : ""}
+    <div class="mono" style="margin-top:12px;padding:12px;border-radius:6px;background:var(--bg);
+      border:1px solid var(--bd);font-size:12px;color:var(--tx3);line-height:1.6;white-space:pre-wrap">${esc(r.textoOriginal)}</div>`;
+}
+
+function alterna(id){ ABERTOS.has(id) ? ABERTOS.delete(id) : ABERTOS.add(id); renderRel(); }
+
+/* ---------- GRAFICOS ---------- */
+function desenharGraficos(F){
+  Object.values(charts).forEach(c => c && c.destroy());
+  const base = {responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:"#B8C4D9",font:{size:11}}}},
+    scales:{x:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"}},
+            y:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"},beginAtZero:true}}};
+
+  const sent = ["positivo","neutro","negativo"].map(s => F.filter(r=>r.sentimento===s).length);
+  charts.c1 = new Chart($("ch1"), {type:"doughnut",
+    data:{labels:["Positivo","Neutro","Negativo"],
+      datasets:[{data:sent,backgroundColor:[SC.positivo,SC.neutro,SC.negativo],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
+      plugins:{legend:{position:"bottom",labels:{color:"#B8C4D9",font:{size:11},padding:12}}}}});
+
+  const mv = {}; F.forEach(r => mv[r.vendedor] = (mv[r.vendedor]||0)+1);
+  charts.c2 = new Chart($("ch2"), {type:"bar",
+    data:{labels:Object.keys(mv),datasets:[{label:"Visitas",data:Object.values(mv),
+      backgroundColor:"#00E5FF",borderRadius:4}]},
+    options:Object.assign({indexAxis:"y"},base,{plugins:{legend:{display:false}}})});
+
+  const md = {};
+  F.forEach(r => {
+    const k = dtBR(r.data).slice(0,5);
+    md[k] = md[k] || {o:0,p:0};
+    md[k].o += r.oportunidades.length; md[k].p += r.perdas.length;
+  });
+  const dias = Object.keys(md).sort((a,b)=>{
+    const [da,ma]=a.split("/"), [db,mb]=b.split("/");
+    return (ma-mb) || (da-db);
+  });
+  charts.c3 = new Chart($("ch3"), {type:"line",
+    data:{labels:dias,datasets:[
+      {label:"Oportunidades",data:dias.map(d=>md[d].o),borderColor:SC.positivo,backgroundColor:SC.positivo,tension:.3},
+      {label:"Perdas",data:dias.map(d=>md[d].p),borderColor:SC.negativo,backgroundColor:SC.negativo,tension:.3}]},
+    options:base});
+
+  const mc = {}; F.forEach(r => r.concorrentes.forEach(c => mc[c] = (mc[c]||0)+1));
+  const top = Object.entries(mc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  charts.c4 = new Chart($("ch4"), {type:"bar",
+    data:{labels:top.map(t=>t[0]),datasets:[{label:"Mencoes",data:top.map(t=>t[1]),
+      backgroundColor:"#FF6B35",borderRadius:4}]},
+    options:Object.assign({},base,{plugins:{legend:{display:false}}})});
+}
+
+/* ---------- EXPORTAR EXCEL ---------- */
+$("ft-excel").onclick = () => {
+  const F = filtrados();
+  if(!F.length){ alert("Nenhum relato no filtro atual."); return; }
+  const j = a => (a && a.length) ? a.join("\n") : "";
+  const hoje = new Date().toLocaleDateString("pt-BR");
+  const wb = XLSX.utils.book_new();
+
+  // Dashboard
+  const barra = (v,mx) => mx ? "█".repeat(Math.max(1,Math.round(v/mx*20))) : "";
+  const cont = c => F.reduce((s,r)=>s+r[c].length,0);
+  const D = [["TRADE INTELLIGENCE // DELLAMED"],["Gerado em "+hoje],
+    ["Vendedor: "+($("ft-vend").value||"Todos")+"   |   Estado: "+($("ft-uf").value||"Todos")],[],
+    ["INDICADORES"],["Visitas","Lojas","Estados","Oportunidades","Perdas"],
+    [F.length,new Set(F.map(r=>r.loja).filter(Boolean)).size,new Set(F.map(r=>r.estado)).size,cont("oportunidades"),cont("perdas")],[],
+    ["SENTIMENTO"],["Sentimento","Visitas","%","Distribuicao"]];
+  const sent = ["positivo","neutro","negativo"].map(s=>[s,F.filter(r=>r.sentimento===s).length]);
+  const mxS = Math.max(...sent.map(s=>s[1]),1);
+  sent.forEach(([s,n]) => D.push([s,n,F.length?Math.round(n/F.length*100)+"%":"0%",barra(n,mxS)]));
+  D.push([],["VISITAS POR VENDEDOR"],["Vendedor","Visitas","%","Distribuicao"]);
+  const mv={}; F.forEach(r=>mv[r.vendedor]=(mv[r.vendedor]||0)+1);
+  const mxV=Math.max(...Object.values(mv),1);
+  Object.entries(mv).sort((a,b)=>b[1]-a[1]).forEach(([v,n])=>D.push([v,n,Math.round(n/F.length*100)+"%",barra(n,mxV)]));
+  D.push([],["CONCORRENTES CITADOS"],["Concorrente","Mencoes","","Distribuicao"]);
+  const mc={}; F.forEach(r=>r.concorrentes.forEach(c=>mc[c]=(mc[c]||0)+1));
+  const mxC=Math.max(...Object.values(mc),1);
+  Object.entries(mc).sort((a,b)=>b[1]-a[1]).forEach(([c,n])=>D.push([c,n,"",barra(n,mxC)]));
+  const wsD = XLSX.utils.aoa_to_sheet(D);
+  wsD["!cols"]=[{wch:46},{wch:14},{wch:10},{wch:26},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsD,"Dashboard");
+
+  // Relatos
+  const ws1 = XLSX.utils.json_to_sheet(F.map(r => ({
+    "DATA":dtBR(r.data),"VENDEDOR":r.vendedor,"ESTADO":r.estado,"CIDADE":r.cidade,"LOJA":r.loja,
+    "SENTIMENTO":r.sentimento.toUpperCase(),"RESUMO":r.resumo,
+    "OPORTUNIDADES":j(r.oportunidades),"PERDAS/PROBLEMAS":j(r.perdas),"INSIGHTS":j(r.insights),
+    "PRODUTOS/MIX":j(r.produtos),"CONCORRENTES":j(r.concorrentes),
+    "ACAO SUGERIDA":r.acaoSugerida,"RELATO ORIGINAL":r.textoOriginal
+  })));
+  ws1["!cols"]=[{wch:11},{wch:15},{wch:8},{wch:16},{wch:26},{wch:12},{wch:48},
+    {wch:38},{wch:38},{wch:34},{wch:26},{wch:22},{wch:42},{wch:60}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Relatos");
+
+  XLSX.writeFile(wb,"Trade_Intelligence_Dellamed_"+hoje.replace(/\//g,"-")+".xlsx");
+};
+
+/* ---------- UTILITARIOS ---------- */
+function dtBR(iso){
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleDateString("pt-BR");
+}
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+/* ---------- BANNER SVG ---------- */
+(function(){
+  let r = "";
+  for(let a = 0; a < 360; a += 15)
+    r += `<path d="M340 150 L332 -350 L348 -350 Z" fill="#D4A843" opacity=".22" transform="rotate(${a} 340 150)"/>`;
+  document.getElementById("rays").innerHTML = r;
+
+  const heroi = (cx,base,h,capa,bracos) => {
+    const w = h*.30, hr = h*.115, hy = base-h+hr;
+    let s = "";
+    if(capa) s += `<path d="M${cx-w*.8} ${hy+hr*1.5} L${cx-w*1.5} ${base-h*.1} L${cx+w*1.5} ${base-h*.1} L${cx+w*.8} ${hy+hr*1.5} Z" fill="#D4A843" opacity=".55"/>`;
+    s += `<rect x="${cx-w*.42}" y="${base-h*.42}" width="${w*.36}" height="${h*.42}" rx="${w*.16}" fill="#12203C"/>`;
+    s += `<rect x="${cx+w*.06}" y="${base-h*.42}" width="${w*.36}" height="${h*.42}" rx="${w*.16}" fill="#12203C"/>`;
+    s += `<path d="M${cx-w*.62} ${hy+hr*1.2} Q${cx} ${hy+hr*.7} ${cx+w*.62} ${hy+hr*1.2} L${cx+w*.5} ${base-h*.38} L${cx-w*.5} ${base-h*.38} Z" fill="#1E3A6E"/>`;
+    if(bracos === "hips"){
+      s += `<path d="M${cx-w*.6} ${hy+hr*1.5} L${cx-w*1.05} ${base-h*.44} L${cx-w*.8} ${base-h*.4} L${cx-w*.44} ${hy+hr*2.1} Z" fill="#1E3A6E"/>`;
+      s += `<path d="M${cx+w*.6} ${hy+hr*1.5} L${cx+w*1.05} ${base-h*.44} L${cx+w*.8} ${base-h*.4} L${cx+w*.44} ${hy+hr*2.1} Z" fill="#1E3A6E"/>`;
+    } else {
+      s += `<rect x="${cx-w*.72}" y="${hy+hr*1.9}" width="${w*1.44}" height="${h*.075}" rx="${h*.035}" fill="#1E3A6E"/>`;
+    }
+    s += `<rect x="${cx-w*.52}" y="${base-h*.44}" width="${w*1.04}" height="${h*.045}" rx="${h*.02}" fill="#D4A843"/>`;
+    s += `<text x="${cx}" y="${base-h*.52}" text-anchor="middle" font-size="${h*.16}" font-weight="900" fill="#D4A843">T</text>`;
+    s += `<circle cx="${cx}" cy="${hy}" r="${hr}" fill="#F0C9A0"/>`;
+    s += `<rect x="${cx-hr}" y="${hy-hr*.32}" width="${hr*2}" height="${hr*.55}" rx="${hr*.2}" fill="#0A1224"/>`;
+    s += `<path d="M${cx-hr*1.05} ${hy-hr*.15} Q${cx} ${hy-hr*1.7} ${cx+hr*1.05} ${hy-hr*.15} Z" fill="#141414"/>`;
+    s += `<rect x="${cx-w*.44}" y="${base-h*.13}" width="${w*.38}" height="${h*.13}" rx="${w*.1}" fill="#0A1224"/>`;
+    s += `<rect x="${cx+w*.06}" y="${base-h*.13}" width="${w*.38}" height="${h*.13}" rx="${w*.1}" fill="#0A1224"/>`;
+    return s;
+  };
+  document.getElementById("heroes").innerHTML =
+    heroi(160,218,108,false,"hips") + heroi(238,218,138,false,"cross") +
+    heroi(340,214,176,true,"hips") + heroi(444,218,132,false,"cross") +
+    heroi(524,218,112,false,"hips");
+})();
+
+/* ---------- SESSAO SALVA ---------- */
+(async function(){
+  const s = localStorage.getItem("trade_cred");
+  if(!s) return;
+  try{
+    CRED = JSON.parse(s);
+    load("entrando...");
+    const r = await api("listar");
+    unload();
+    if(r.ok){ USER = r.usuario; iniciar(); }
+    else { localStorage.removeItem("trade_cred"); CRED = null; }
+  }catch(e){ unload(); CRED = null; }
+})();
+</script>
+</body>
+</html>
