@@ -157,6 +157,7 @@ select option{background:var(--card2);color:var(--tx)}
           style="border:none;background:transparent;padding:8px 0">
         <span id="hs-count" class="mono" style="font-size:11px;color:var(--tx3);white-space:nowrap"></span>
       </div>
+      <div id="hs-acoes" style="margin-bottom:14px"></div>
       <div id="hs-lista"></div>
     </section>
 
@@ -215,7 +216,7 @@ select option{background:var(--card2);color:var(--tx)}
 
 <div id="ov-del" class="ovl hide">
   <div class="card" style="padding:26px;max-width:420px;width:100%;border-color:rgba(255,77,106,.4)">
-    <h3 style="margin:0 0 10px;font-size:14px;font-weight:700;letter-spacing:.04em">EXCLUIR RELATO?</h3>
+    <h3 id="del-titulo" style="margin:0 0 10px;font-size:14px;font-weight:700;letter-spacing:.04em">EXCLUIR RELATO?</h3>
     <p style="font-size:13px;color:var(--tx2);margin:0 0 12px">Esta acao nao pode ser desfeita.</p>
     <div id="del-info" style="padding:10px 14px;border-radius:8px;background:var(--card2);
       border:1px solid var(--bd);margin-bottom:20px;font-size:12px;color:var(--tx2)"></div>
@@ -239,6 +240,7 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 const SC = {positivo:"#00FF88", neutro:"#00E5FF", negativo:"#FF4D6A"};
 
 let USER = null, CRED = null, RELATOS = [], ABERTOS = new Set(), DEL_ID = null;
+let SELECIONADOS = new Set();
 let charts = {};
 
 const $ = id => document.getElementById(id);
@@ -378,23 +380,63 @@ async function reanalisar(id){
 /* ---------- HISTORICO ---------- */
 $("hs-busca").oninput = renderHist;
 
-function renderHist(){
+function podeExcluir(r){ return USER.role === "admin" || r.owner === CRED.email.toLowerCase(); }
+
+function listaFiltrada(){
   const q = $("hs-busca").value.toLowerCase().trim();
-  const lista = !q ? RELATOS : RELATOS.filter(r => (
+  return !q ? RELATOS : RELATOS.filter(r => (
     [r.vendedor,r.estado,r.loja,r.cidade,r.resumo,r.acaoSugerida,r.textoOriginal,dtBR(r.data)]
       .concat(r.oportunidades,r.perdas,r.insights,r.produtos,r.concorrentes)
       .join(" ").toLowerCase().includes(q)
   ));
+}
+
+function renderHist(){
+  const lista = listaFiltrada();
   $("hs-count").textContent = lista.length + (lista.length === 1 ? " resultado" : " resultados");
+
+  // limpa selecoes de itens que sumiram
+  SELECIONADOS.forEach(id => { if(!RELATOS.some(r => r.id === id)) SELECIONADOS.delete(id); });
+
+  const selecionaveis = lista.filter(podeExcluir);
+  const nSel = SELECIONADOS.size;
+
+  // barra de acoes em lote
+  $("hs-acoes").innerHTML = !selecionaveis.length ? "" : `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2)">
+        <input type="checkbox" id="hs-todos" style="width:16px;height:16px;padding:0;accent-color:var(--cy);cursor:pointer"
+          ${nSel === selecionaveis.length && nSel > 0 ? "checked" : ""}>
+        Selecionar todos
+      </label>
+      ${nSel ? `
+        <span class="mono" style="font-size:12px;color:var(--cy)">${nSel} selecionado${nSel>1?"s":""}</span>
+        <button class="nav" style="border-color:rgba(255,77,106,.5);background:rgba(255,77,106,.12);
+          color:var(--rd);font-size:11px;margin-left:auto" onclick="pedirExcluirLote()">EXCLUIR SELECIONADOS</button>
+        <button class="nav" style="font-size:11px" onclick="limparSel()">LIMPAR</button>
+      ` : ""}
+    </div>`;
+
+  if(document.getElementById("hs-todos")){
+    $("hs-todos").onchange = e => {
+      if(e.target.checked) selecionaveis.forEach(r => SELECIONADOS.add(r.id));
+      else SELECIONADOS.clear();
+      renderHist();
+    };
+  }
+
   if(!lista.length){
     $("hs-lista").innerHTML = `<div class="mono" style="text-align:center;padding:50px;color:var(--tx3);font-size:13px">// nenhum registro</div>`;
     return;
   }
-  const podeExcluir = r => USER.role === "admin" || r.owner === CRED.email.toLowerCase();
+
   $("hs-lista").innerHTML = lista.map(r => {
     const c = r.analisado ? SC[r.sentimento] || SC.neutro : "#8494AD";
+    const pode = podeExcluir(r), sel = SELECIONADOS.has(r.id);
     return `<div class="card" style="padding:14px 16px;border-left:3px solid ${c};margin-bottom:8px;
-      display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      display:flex;gap:12px;align-items:flex-start;${sel?"background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.35)":""}">
+      ${pode ? `<input type="checkbox" style="width:16px;height:16px;padding:0;margin-top:2px;flex-shrink:0;
+        accent-color:var(--cy);cursor:pointer" ${sel?"checked":""} onchange="alternaSel('${r.id}')">` : `<span style="width:16px;flex-shrink:0"></span>`}
       <div style="flex:1;min-width:0">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="mono" style="font-size:11px;color:var(--tx3)">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</span>
@@ -409,21 +451,58 @@ function renderHist(){
           ${r.perdas.map(p=>`<span style="padding:2px 7px;border-radius:4px;font-size:10px;background:rgba(255,77,106,.12);color:var(--rd)">! ${esc(p)}</span>`).join("")}
         </div>
       </div>
-      ${podeExcluir(r) ? `<button class="nav" style="font-size:10px;padding:4px 10px;flex-shrink:0"
+      ${pode ? `<button class="nav" style="font-size:10px;padding:4px 10px;flex-shrink:0"
         onclick="pedirExcluir('${r.id}')">EXCLUIR</button>` : ""}
     </div>`;
   }).join("");
 }
 
+function alternaSel(id){
+  SELECIONADOS.has(id) ? SELECIONADOS.delete(id) : SELECIONADOS.add(id);
+  renderHist();
+}
+function limparSel(){ SELECIONADOS.clear(); renderHist(); }
+
+function pedirExcluirLote(){
+  if(!SELECIONADOS.size) return;
+  DEL_ID = "__lote__";
+  const n = SELECIONADOS.size;
+  $("del-titulo").textContent = `EXCLUIR ${n} RELATO${n>1?"S":""}?`;
+  const nomes = RELATOS.filter(r => SELECIONADOS.has(r.id)).slice(0,5)
+    .map(r => `${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.loja || r.textoOriginal.slice(0,40))}`);
+  $("del-info").innerHTML = nomes.join("<br>") + (n > 5 ? `<br><span style="color:var(--tx3)">e mais ${n-5}...</span>` : "");
+  $("ov-del").classList.remove("hide");
+}
+
 function pedirExcluir(id){
   const r = RELATOS.find(x => x.id === id); if(!r) return;
   DEL_ID = id;
+  $("del-titulo").textContent = "EXCLUIR RELATO?";
   $("del-info").innerHTML = `<div class="mono" style="font-size:11px;color:var(--tx3);margin-bottom:4px">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</div>${esc(r.textoOriginal.slice(0,100))}`;
   $("ov-del").classList.remove("hide");
 }
 
 $("del-sim").onclick = async () => {
   if(!DEL_ID) return;
+
+  // exclusao em lote
+  if(DEL_ID === "__lote__"){
+    const ids = [...SELECIONADOS];
+    fechaDel();
+    let falhas = 0;
+    for(let i = 0; i < ids.length; i++){
+      load(`excluindo ${i+1} de ${ids.length}...`);
+      try{ const r = await api("excluir", {id: ids[i]}); if(!r.ok) falhas++; }
+      catch(e){ falhas++; }
+    }
+    unload();
+    SELECIONADOS.clear();
+    if(falhas) alert(`${falhas} relato(s) nao puderam ser excluidos.`);
+    await recarregar();
+    return;
+  }
+
+  // exclusao individual
   const id = DEL_ID; fechaDel(); load("excluindo...");
   try{ const r = await api("excluir", {id}); unload(); if(!r.ok) alert(r.erro); await recarregar(); }
   catch(e){ unload(); alert("Sem conexao."); }
