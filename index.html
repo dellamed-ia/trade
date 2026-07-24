@@ -15,13 +15,17 @@
 
 <style>
 :root{
+  color-scheme: dark;
   --bg:#000000; --card:#0D1117; --card2:#161B26; --bd:#1E2A3A;
   --tx:#FFFFFF; --tx2:#B8C4D9; --tx3:#8494AD;
   --cy:#00E5FF; --mg:#D946EF; --gr:#00FF88; --rd:#FF4D6A;
   --am:#FFBB00; --or:#FF6B35; --pu:#8B5CF6; --gold:#D4A843;
 }
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{padding-bottom:env(safe-area-inset-bottom)}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+  overflow-x:hidden;-webkit-overflow-scrolling:touch;
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   -webkit-font-smoothing:antialiased}
 button{font-family:inherit;transition:filter .15s}
@@ -31,6 +35,14 @@ input,select,textarea{font-family:inherit;width:100%;padding:11px 14px;border-ra
 input:focus,select:focus,textarea:focus{border-color:var(--cy);box-shadow:0 0 0 2px rgba(0,229,255,.15)}
 select option{background:var(--card2);color:var(--tx)}
 ::placeholder{color:var(--tx3)}
+input[type=date]{color-scheme:dark;min-height:38px}
+@supports (-webkit-touch-callout:none){
+  input,select,textarea{font-size:16px}
+}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.75;cursor:pointer}
+button,input,select,textarea{-webkit-tap-highlight-color:transparent}
+.chartbox{position:relative;height:220px;width:100%}
+@media(max-width:640px){.chartbox{height:200px}}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
@@ -41,7 +53,7 @@ select option{background:var(--card2);color:var(--tx)}
   font-size:13px;font-weight:700;letter-spacing:.04em;
   background:linear-gradient(135deg,#00E5FF,#00B4D8);color:#000}
 .btn:disabled{opacity:.3;cursor:not-allowed}
-.nav{padding:8px 16px;border-radius:6px;border:1px solid var(--bd);
+.nav{padding:8px 16px;min-height:34px;border-radius:6px;border:1px solid var(--bd);
   background:transparent;color:var(--tx2);cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em}
 .nav.on{border-color:var(--cy);background:rgba(0,229,255,.10);color:var(--cy)}
 .nav.on.am{border-color:var(--am);background:rgba(255,187,0,.10);color:var(--am)}
@@ -99,8 +111,8 @@ select option{background:var(--card2);color:var(--tx)}
 <!-- ============ APP ============ -->
 <div id="app" class="hide">
   <header style="background:linear-gradient(135deg,#0A1628,#152238 40%,#1B2A4A);
-    padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
-    flex-wrap:wrap;gap:10px;border-bottom:1px solid #2A4370">
+    padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;justify-content:space-between;
+    align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid #2A4370">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="width:8px;height:8px;border-radius:50%;background:var(--cy);box-shadow:0 0 10px var(--cy)"></span>
       <span style="font-size:16px;font-weight:800;letter-spacing:-.02em">TRADE INTELLIGENCE</span>
@@ -173,17 +185,18 @@ select option{background:var(--card2);color:var(--tx)}
           <option value="">Todos</option><option value="positivo">Positivo</option>
           <option value="neutro">Neutro</option><option value="negativo">Negativo</option></select></div>
         <button class="nav" id="ft-limpar">LIMPAR</button>
+        <button class="nav" id="ft-atualizar" style="border-color:rgba(0,229,255,.4);color:var(--cy)">ATUALIZAR</button>
         <button class="nav" id="ft-excel" style="margin-left:auto;border-color:rgba(0,255,136,.5);
           background:rgba(0,255,136,.1);color:var(--gr)">EXPORTAR EXCEL</button>
       </div>
       <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px"></div>
       <div class="grid2" style="margin-bottom:16px">
-        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">SENTIMENTO</h4><canvas id="ch1" height="180"></canvas></div>
-        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">VISITAS POR VENDEDOR</h4><canvas id="ch2" height="180"></canvas></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">SENTIMENTO</h4><div class="chartbox"><canvas id="ch1"></canvas></div></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">VISITAS POR VENDEDOR</h4><div class="chartbox"><canvas id="ch2"></canvas></div></div>
       </div>
       <div class="grid2" style="margin-bottom:16px">
-        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">OPORTUNIDADES VS PERDAS</h4><canvas id="ch3" height="180"></canvas></div>
-        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">CONCORRENTES CITADOS</h4><canvas id="ch4" height="180"></canvas></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">OPORTUNIDADES VS PERDAS</h4><div class="chartbox"><canvas id="ch3"></canvas></div></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">CONCORRENTES CITADOS</h4><div class="chartbox"><canvas id="ch4"></canvas></div></div>
       </div>
       <div class="grid2" style="margin-bottom:22px">
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">TOP OPORTUNIDADES</h4><div id="rk-op"></div></div>
@@ -241,6 +254,7 @@ const SC = {positivo:"#00FF88", neutro:"#00E5FF", negativo:"#FF4D6A"};
 
 let USER = null, CRED = null, RELATOS = [], ABERTOS = new Set(), DEL_ID = null;
 let SELECIONADOS = new Set();
+let ULTIMA_CARGA = 0;
 let charts = {};
 
 const $ = id => document.getElementById(id);
@@ -313,9 +327,12 @@ async function recarregar(){
   try{
     const r = await api("listar");
     RELATOS = r.ok ? r.relatos : [];
+    ULTIMA_CARGA = Date.now();
   }catch(e){ RELATOS = []; }
   unload();
-  renderPendentes(); renderHist(); renderRel();
+  renderPendentes(); renderHist();
+  // so desenha graficos se a aba estiver visivel (economiza processamento no celular)
+  if(!$("vw-rel").classList.contains("hide")) renderRel();
 }
 
 /* ---------- NAVEGACAO ---------- */
@@ -327,7 +344,12 @@ function irPara(v){
 }
 $("nv-novo").onclick = () => irPara("novo");
 $("nv-hist").onclick = () => irPara("hist");
-$("nv-rel").onclick  = async () => { irPara("rel"); await recarregar(); irPara("rel"); };
+$("nv-rel").onclick  = () => {
+  irPara("rel");
+  // so busca do servidor se os dados estiverem velhos (mais de 60s)
+  if(Date.now() - ULTIMA_CARGA > 60000) recarregar();
+  else renderRel();
+};
 
 /* ---------- FORMULARIO ---------- */
 UFS.forEach(u => $("fm-uf").insertAdjacentHTML("beforeend", `<option value="${u}">${u}</option>`));
@@ -514,6 +536,7 @@ $("ft-limpar").onclick = () => {
   ["ft-de","ft-ate","ft-vend","ft-uf","ft-sent"].forEach(id => $(id).value = "");
   renderRel();
 };
+$("ft-atualizar").onclick = () => recarregar();
 
 function filtrados(){
   const de = $("ft-de").value, ate = $("ft-ate").value;
@@ -616,8 +639,10 @@ function alterna(id){ ABERTOS.has(id) ? ABERTOS.delete(id) : ABERTOS.add(id); re
 /* ---------- GRAFICOS ---------- */
 function desenharGraficos(F){
   Object.values(charts).forEach(c => c && c.destroy());
-  const base = {responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:"#B8C4D9",font:{size:11}}}},
+  charts = {};
+  const base = {responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    resizeDelay:120,
+    plugins:{legend:{labels:{color:"#B8C4D9",font:{size:11},boxWidth:12}}},
     scales:{x:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"}},
             y:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"},beginAtZero:true}}};
 
@@ -626,7 +651,8 @@ function desenharGraficos(F){
     data:{labels:["Positivo","Neutro","Negativo"],
       datasets:[{data:sent,backgroundColor:[SC.positivo,SC.neutro,SC.negativo],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
-      plugins:{legend:{position:"bottom",labels:{color:"#B8C4D9",font:{size:11},padding:12}}}}});
+      animation:{duration:300}, resizeDelay:120,
+      plugins:{legend:{position:"bottom",labels:{color:"#B8C4D9",font:{size:11},padding:12,boxWidth:12}}}}});
 
   const mv = {}; F.forEach(r => mv[r.vendedor] = (mv[r.vendedor]||0)+1);
   charts.c2 = new Chart($("ch2"), {type:"bar",
