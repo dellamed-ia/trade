@@ -39,7 +39,11 @@ input[type=date]{color-scheme:dark;min-height:38px}
 @supports (-webkit-touch-callout:none){
   input,select,textarea{font-size:16px}
 }
-input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.75;cursor:pointer}
+input[type=date]::-webkit-calendar-picker-indicator{
+  filter:invert(100%) brightness(200%);
+  opacity:1;cursor:pointer;padding:2px}
+input[type=date]::-webkit-inner-spin-button,
+input[type=date]::-webkit-clear-button{display:none}
 button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 .chartbox{position:relative;height:220px;width:100%}
 @media(max-width:640px){.chartbox{height:200px}}
@@ -150,7 +154,7 @@ button,input,select,textarea{-webkit-tap-highlight-color:transparent}
           </div>
           <div>
             <label class="lbl">Data da visita</label>
-            <input id="fm-data" type="text" placeholder="dd/mm/aaaa" maxlength="10" inputmode="numeric">
+            <input id="fm-data" type="date">
           </div>
         </div>
         <label class="lbl">Relato da visita</label>
@@ -189,14 +193,18 @@ button,input,select,textarea{-webkit-tap-highlight-color:transparent}
         <button class="nav" id="ft-excel" style="margin-left:auto;border-color:rgba(0,255,136,.5);
           background:rgba(0,255,136,.1);color:var(--gr)">EXPORTAR EXCEL</button>
       </div>
-      <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px"></div>
+      <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px"></div>
+      <div id="legenda" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+        padding:10px 14px;margin-bottom:20px;border-radius:8px;background:var(--card);border:1px solid var(--bd)"></div>
       <div class="grid2" style="margin-bottom:16px">
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">SENTIMENTO</h4><div class="chartbox"><canvas id="ch1"></canvas></div></div>
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">VISITAS POR VENDEDOR</h4><div class="chartbox"><canvas id="ch2"></canvas></div></div>
       </div>
       <div class="grid2" style="margin-bottom:16px">
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">OPORTUNIDADES VS PERDAS</h4><div class="chartbox"><canvas id="ch3"></canvas></div></div>
-        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">CONCORRENTES CITADOS</h4><div class="chartbox"><canvas id="ch4"></canvas></div></div>
+        <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">CONCORRENTES CITADOS</h4>
+          <div class="chartbox"><canvas id="ch4"></canvas></div>
+          <div id="lista-conc" style="margin-top:14px"></div></div>
       </div>
       <div class="grid2" style="margin-bottom:22px">
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">TOP OPORTUNIDADES</h4><div id="rk-op"></div></div>
@@ -354,16 +362,26 @@ $("nv-rel").onclick  = () => {
 /* ---------- FORMULARIO ---------- */
 UFS.forEach(u => $("fm-uf").insertAdjacentHTML("beforeend", `<option value="${u}">${u}</option>`));
 
-$("fm-data").oninput = e => {
-  const d = e.target.value.replace(/\D/g,"").slice(0,8);
-  e.target.value = d.length <= 2 ? d
-    : d.length <= 4 ? d.slice(0,2)+"/"+d.slice(2)
-    : d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4);
-};
+// preenche com a data de hoje ao abrir
+(function(){
+  const h = new Date();
+  const iso = h.getFullYear() + "-" +
+    String(h.getMonth()+1).padStart(2,"0") + "-" +
+    String(h.getDate()).padStart(2,"0");
+  $("fm-data").value = iso;
+  $("fm-data").max = iso;   // impede lancar visita no futuro
+})();
+
+// converte aaaa-mm-dd (formato do input) para dd/mm/aaaa (formato do backend)
+function isoParaBR(iso){
+  if(!iso) return "";
+  const [a,m,d] = iso.split("-");
+  return d + "/" + m + "/" + a;
+}
 
 $("fm-enviar").onclick = async () => {
-  const uf = $("fm-uf").value, dt = $("fm-data").value, tx = $("fm-texto").value.trim();
-  if(!uf || dt.length < 10 || !tx){ alert("Preencha estado, data completa e o relato."); return; }
+  const uf = $("fm-uf").value, dt = isoParaBR($("fm-data").value), tx = $("fm-texto").value.trim();
+  if(!uf || !dt || !tx){ alert("Preencha estado, data e o relato."); return; }
   load("enviando e analisando...");
   try{
     const r = await api("criar", {estado:uf, dataVisita:dt, texto:tx});
@@ -577,6 +595,21 @@ function renderRel(){
       <div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.06em;margin-top:6px">${l.toUpperCase()}</div>
     </div>`).join("");
 
+  const nPos = F.filter(r=>r.sentimento==="positivo").length;
+  const nNeu = F.filter(r=>r.sentimento==="neutro").length;
+  const nNeg = F.filter(r=>r.sentimento==="negativo").length;
+  const pc = n => F.length ? Math.round(n/F.length*100) : 0;
+  $("legenda").innerHTML = [
+    ["POSITIVO", nPos, SC.positivo],
+    ["NEUTRO",   nNeu, SC.neutro],
+    ["NEGATIVO", nNeg, SC.negativo]
+  ].map(([t,n,c]) => `
+    <span style="display:flex;align-items:center;gap:7px;font-size:12px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c}66"></span>
+      <b style="color:${c};letter-spacing:.05em">${t}</b>
+      <span style="color:var(--tx2)">${n} ${n===1?"visita":"visitas"} · ${pc(n)}%</span>
+    </span>`).join("");
+
   desenharGraficos(F);
 
   const rank = (campo) => {
@@ -682,6 +715,48 @@ function desenharGraficos(F){
     data:{labels:top.map(t=>t[0]),datasets:[{label:"Mencoes",data:top.map(t=>t[1]),
       backgroundColor:"#FF6B35",borderRadius:4}]},
     options:Object.assign({},base,{plugins:{legend:{display:false}}})});
+
+  renderListaConc(mc);
+}
+
+/* lista de concorrentes com ordenacao clicavel */
+let ORD_CONC = "desc";
+let MAPA_CONC = {};
+
+function renderListaConc(mc){
+  MAPA_CONC = mc || MAPA_CONC;
+  const itens = Object.entries(MAPA_CONC);
+  if(!itens.length){
+    $("lista-conc").innerHTML = `<div style="font-size:12px;color:var(--tx3);padding-top:6px">Nenhum concorrente citado</div>`;
+    return;
+  }
+  itens.sort((a,b) => ORD_CONC === "desc" ? b[1]-a[1] : a[1]-b[1]);
+  const total = itens.reduce((s,i)=>s+i[1],0);
+
+  $("lista-conc").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      padding:6px 0;border-bottom:1px solid var(--bd);margin-bottom:2px">
+      <span style="font-size:10px;color:var(--tx3);letter-spacing:.06em">CONCORRENTE</span>
+      <button onclick="ordenarConc()" style="background:none;border:none;cursor:pointer;padding:2px 4px;
+        color:var(--or);font-size:10px;letter-spacing:.06em;display:flex;align-items:center;gap:4px">
+        MENCOES <span style="font-size:9px">${ORD_CONC==="desc"?"▼":"▲"}</span>
+      </button>
+    </div>
+    ${itens.map(([nome,n]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;
+        border-bottom:1px solid rgba(30,42,58,.5)">
+        <span style="font-size:13px">${esc(nome)}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--tx3)">${Math.round(n/total*100)}%</span>
+          <span style="font-size:11px;font-weight:700;color:var(--or);background:rgba(255,107,53,.15);
+            padding:2px 9px;border-radius:4px;min-width:30px;text-align:center">${n}</span>
+        </span>
+      </div>`).join("")}`;
+}
+
+function ordenarConc(){
+  ORD_CONC = ORD_CONC === "desc" ? "asc" : "desc";
+  renderListaConc();
 }
 
 /* ---------- EXPORTAR EXCEL ---------- */
