@@ -197,7 +197,7 @@ button,input,select,textarea{-webkit-tap-highlight-color:transparent}
           background:rgba(0,255,136,.1);color:var(--gr)">EXPORTAR EXCEL</button>
       </div>
       <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px"></div>
-      <div id="legenda" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+      <div id="legenda" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;
         padding:10px 14px;margin-bottom:20px;border-radius:8px;background:var(--card);border:1px solid var(--bd)"></div>
       <div class="grid2" style="margin-bottom:16px">
         <div class="card" style="padding:16px"><h4 style="margin:0 0 12px;font-size:12px;color:var(--tx2);letter-spacing:.06em">SENTIMENTO</h4><div class="chartbox"><canvas id="ch1"></canvas></div></div>
@@ -262,6 +262,36 @@ const API_URL = "https://script.google.com/macros/s/AKfycbynEN2lu73JWVFUjjPLFErq
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 const SC = {positivo:"#00FF88", neutro:"#00E5FF", negativo:"#FF4D6A"};
+
+/* ============================================================
+   NOTA DA LOJA  (0 a 10)
+   Calculada a partir dos itens que a IA extraiu do relato.
+   Regra fixa, mesma para todos: mesmo relato = mesma nota.
+
+     Base neutra .................... 5,0
+     Cada oportunidade .............. +1,5
+     Cada perda / problema .......... -2,0
+     Cada concorrente citado ........ -0,5
+
+   Classificacao:
+     7,0 a 10,0 -> POSITIVO
+     4,0 a 6,9  -> NEUTRO
+     0,0 a 3,9  -> NEGATIVO
+   ============================================================ */
+const PESO = {base:5, oportunidade:1.5, perda:-2.0, concorrente:-0.5};
+const CORTE = {positivo:7.0, neutro:4.0};
+
+function calcularNota(r){
+  const n = PESO.base
+    + PESO.oportunidade * (r.oportunidades||[]).length
+    + PESO.perda        * (r.perdas||[]).length
+    + PESO.concorrente  * (r.concorrentes||[]).length;
+  return Math.round(Math.max(0, Math.min(10, n)) * 10) / 10;
+}
+function classificar(nota){
+  return nota >= CORTE.positivo ? "positivo" : nota >= CORTE.neutro ? "neutro" : "negativo";
+}
+function classeDe(r){ return classificar(calcularNota(r)); }
 
 let USER = null, CRED = null, RELATOS = [], ABERTOS = new Set(), DEL_ID = null;
 let SELECIONADOS = new Set();
@@ -474,7 +504,8 @@ function renderHist(){
   }
 
   $("hs-lista").innerHTML = lista.map(r => {
-    const c = r.analisado ? SC[r.sentimento] || SC.neutro : "#8494AD";
+    const cls = classeDe(r), nota = calcularNota(r);
+    const c = r.analisado ? SC[cls] : "#8494AD";
     const pode = podeExcluir(r), sel = SELECIONADOS.has(r.id);
     return `<div class="card" style="padding:14px 16px;border-left:3px solid ${c};margin-bottom:8px;
       display:flex;gap:12px;align-items:flex-start;${sel?"background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.35)":""}">
@@ -484,7 +515,7 @@ function renderHist(){
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="mono" style="font-size:11px;color:var(--tx3)">${dtBR(r.data)} // ${esc(r.vendedor)} // ${esc(r.estado)}</span>
           ${r.analisado
-            ? `<span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${r.sentimento.toUpperCase()}</span>`
+            ? `<span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${cls.toUpperCase()} · ${nota.toFixed(1)}</span>`
             : `<span class="pill" style="background:#8494AD22;color:var(--tx3)">PENDENTE</span>`}
         </div>
         ${r.loja ? `<div style="font-size:14px;font-weight:700;margin-top:4px">${esc(r.loja)}</div>` : ""}
@@ -566,7 +597,7 @@ function filtrados(){
     if(!r.analisado) return false;
     if(v && r.vendedor !== v) return false;
     if(u && r.estado !== u) return false;
-    if(s && r.sentimento !== s) return false;
+    if(s && classeDe(r) !== s) return false;
     const d = new Date(r.data);
     if(de && d < new Date(de)) return false;
     if(ate){ const t = new Date(ate); t.setHours(23,59,59); if(d > t) return false; }
@@ -598,20 +629,46 @@ function renderRel(){
       <div style="font-size:10px;color:var(--tx2);font-weight:600;letter-spacing:.06em;margin-top:6px">${l.toUpperCase()}</div>
     </div>`).join("");
 
-  const nPos = F.filter(r=>r.sentimento==="positivo").length;
-  const nNeu = F.filter(r=>r.sentimento==="neutro").length;
-  const nNeg = F.filter(r=>r.sentimento==="negativo").length;
+  const notas = F.map(calcularNota);
+  const media = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length) : 0;
+  const corMedia = media >= CORTE.positivo ? SC.positivo : media >= CORTE.neutro ? SC.neutro : SC.negativo;
+
+  const nPos = F.filter(r=>classeDe(r)==="positivo").length;
+  const nNeu = F.filter(r=>classeDe(r)==="neutro").length;
+  const nNeg = F.filter(r=>classeDe(r)==="negativo").length;
   const pc = n => F.length ? Math.round(n/F.length*100) : 0;
-  $("legenda").innerHTML = [
-    ["POSITIVO", nPos, SC.positivo],
-    ["NEUTRO",   nNeu, SC.neutro],
-    ["NEGATIVO", nNeg, SC.negativo]
-  ].map(([t,n,c]) => `
-    <span style="display:flex;align-items:center;gap:7px;font-size:12px">
-      <span style="width:10px;height:10px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c}66"></span>
-      <b style="color:${c};letter-spacing:.05em">${t}</b>
-      <span style="color:var(--tx2)">${n} ${n===1?"visita":"visitas"} · ${pc(n)}%</span>
-    </span>`).join("");
+
+  $("legenda").innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%">
+      <div style="display:flex;align-items:baseline;gap:8px;padding-right:16px;border-right:1px solid var(--bd)">
+        <span style="font-size:10px;color:var(--tx3);letter-spacing:.06em">NOTA MEDIA</span>
+        <span style="font-size:22px;font-weight:800;color:${corMedia}">${media.toFixed(1)}</span>
+        <span style="font-size:11px;color:var(--tx3)">/10</span>
+      </div>
+      ${[["POSITIVO",nPos,SC.positivo,"7,0 a 10"],
+         ["NEUTRO",nNeu,SC.neutro,"4,0 a 6,9"],
+         ["NEGATIVO",nNeg,SC.negativo,"0 a 3,9"]].map(([t,n,c,faixa]) => `
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c}66"></span>
+          <b style="color:${c};letter-spacing:.05em">${t}</b>
+          <span style="color:var(--tx3);font-size:10px">(${faixa})</span>
+          <span style="color:var(--tx2)">${n} · ${pc(n)}%</span>
+        </span>`).join("")}
+      <button onclick="$('criterio').classList.toggle('hide')"
+        style="background:none;border:1px solid var(--bd);border-radius:5px;color:var(--tx3);
+        cursor:pointer;font-size:10px;padding:4px 10px;margin-left:auto">COMO A NOTA E CALCULADA</button>
+    </div>
+    <div id="criterio" class="hide" style="width:100%;margin-top:12px;padding-top:12px;
+      border-top:1px solid var(--bd);font-size:12px;color:var(--tx2);line-height:1.7">
+      Toda visita comeca em <b>5,0</b> e a nota se ajusta pelos itens que a analise identificou no relato:
+      <span style="color:var(--gr)">cada oportunidade soma 1,5</span>,
+      <span style="color:var(--rd)">cada perda ou problema subtrai 2,0</span>,
+      <span style="color:var(--or)">cada concorrente citado subtrai 0,5</span>.
+      O resultado fica limitado entre 0 e 10.
+      <br>
+      A perda pesa mais que a oportunidade porque representa perda de venda acontecendo agora,
+      enquanto a oportunidade e potencial ainda nao realizado.
+    </div>`;
 
   desenharGraficos(F);
 
@@ -631,7 +688,8 @@ function renderRel(){
 
   $("rel-titulo").textContent = "RELATOS // " + F.length;
   $("rel-lista").innerHTML = F.map(r => {
-    const c = SC[r.sentimento] || SC.neutro, ab = ABERTOS.has(r.id);
+    const cls = classeDe(r), nota = calcularNota(r);
+    const c = SC[cls], ab = ABERTOS.has(r.id);
     return `<div class="card" style="padding:${ab?"18px 20px":"14px 16px"};border-left:3px solid ${c};margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
         <div style="min-width:0">
@@ -639,7 +697,7 @@ function renderRel(){
           <div style="font-size:15px;font-weight:700;margin-top:3px">${esc(r.loja) || "—"}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-          <span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${r.sentimento.toUpperCase()}</span>
+          <span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${cls.toUpperCase()} · NOTA ${nota.toFixed(1)}</span>
           <button class="nav" style="padding:5px 9px;font-size:10px" onclick="alterna('${r.id}')">${ab?"▲":"▼"}</button>
         </div>
       </div>
@@ -682,7 +740,7 @@ function desenharGraficos(F){
     scales:{x:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"}},
             y:{ticks:{color:"#8494AD",font:{size:10}},grid:{color:"#1E2A3A"},beginAtZero:true}}};
 
-  const sent = ["positivo","neutro","negativo"].map(s => F.filter(r=>r.sentimento===s).length);
+  const sent = ["positivo","neutro","negativo"].map(s => F.filter(r=>classeDe(r)===s).length);
   charts.c1 = new Chart($("ch1"), {type:"doughnut",
     data:{labels:["Positivo","Neutro","Negativo"],
       datasets:[{data:sent,backgroundColor:[SC.positivo,SC.neutro,SC.negativo],borderWidth:0}]},
@@ -778,7 +836,7 @@ $("ft-excel").onclick = () => {
     ["INDICADORES"],["Visitas","Lojas","Estados","Oportunidades","Perdas"],
     [F.length,new Set(F.map(r=>r.loja).filter(Boolean)).size,new Set(F.map(r=>r.estado)).size,cont("oportunidades"),cont("perdas")],[],
     ["SENTIMENTO"],["Sentimento","Visitas","%","Distribuicao"]];
-  const sent = ["positivo","neutro","negativo"].map(s=>[s,F.filter(r=>r.sentimento===s).length]);
+  const sent = ["positivo","neutro","negativo"].map(s=>[s,F.filter(r=>classeDe(r)===s).length]);
   const mxS = Math.max(...sent.map(s=>s[1]),1);
   sent.forEach(([s,n]) => D.push([s,n,F.length?Math.round(n/F.length*100)+"%":"0%",barra(n,mxS)]));
   D.push([],["VISITAS POR VENDEDOR"],["Vendedor","Visitas","%","Distribuicao"]);
@@ -796,7 +854,7 @@ $("ft-excel").onclick = () => {
   // Relatos
   const ws1 = XLSX.utils.json_to_sheet(F.map(r => ({
     "DATA":dtBR(r.data),"VENDEDOR":r.vendedor,"ESTADO":r.estado,"CIDADE":r.cidade,"LOJA":r.loja,
-    "SENTIMENTO":r.sentimento.toUpperCase(),"RESUMO":r.resumo,
+    "NOTA":calcularNota(r),"CLASSIFICACAO":classeDe(r).toUpperCase(),"RESUMO":r.resumo,
     "OPORTUNIDADES":j(r.oportunidades),"PERDAS/PROBLEMAS":j(r.perdas),"INSIGHTS":j(r.insights),
     "PRODUTOS/MIX":j(r.produtos),"CONCORRENTES":j(r.concorrentes),
     "ACAO SUGERIDA":r.acaoSugerida,"RELATO ORIGINAL":r.textoOriginal
